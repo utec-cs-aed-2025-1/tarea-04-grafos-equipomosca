@@ -190,7 +190,7 @@ class PathFindingManager {
             Node* previous = it->second;
             if (previous) {
                 path.emplace_back(previous->coord, cursor->coord,
-                                  sf::Color::Green, 3.0f);
+                                  sf::Color::Red, 3.0f);
             }
 
             cursor = previous;
