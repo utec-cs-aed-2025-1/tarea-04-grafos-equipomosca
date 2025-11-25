@@ -9,7 +9,13 @@
 #include "window_manager.h"
 #include "graph.h"
 #include <unordered_map>
-#include <set>
+#include <unordered_set>
+#include <queue>
+#include <chrono>
+#include <sstream>
+#include <iostream>
+
+using namespace std;
 
 
 // Este enum sirve para identificar el algoritmo que el usuario desea simular
@@ -38,21 +44,83 @@ class PathFindingManager {
     std::vector<sfLine> path;
     std::vector<sfLine> visited_edges;
 
+    int render_counter = 0;
+
     struct Entry {
         Node* node;
         double dist;
+        double priority; // Se usará para BestFirstSearch y A*
 
         bool operator < (const Entry& other) const {
-            return dist < other.dist;
+            return priority > other.priority;
         }
     };
 
-    void dijkstra(Graph &graph) {
-        std::unordered_map<Node *, Node *> parent;
-        // TODO: Add your code here
+    void dijkstra(Graph& graph) {
+        unordered_map<Node*, double> dist;
+        unordered_map<Node*, Node*> parent;
+        unordered_set<Node*> closed;
+
+        // Inicializamos distancias
+        for (auto& p : graph.nodes)
+            dist[p.second] = numeric_limits<double>::infinity();
+        dist[src] = 0.0;
+
+        priority_queue<Entry> pq;
+        pq.push({src, 0.0, 0.0});
+
+        while (!pq.empty()) {
+            Entry top = pq.top();
+            pq.pop();
+
+            Node* u = top.node;
+
+            // Si ya se visito, pasar
+            if (closed.count(u))
+                continue;
+            closed.insert(u);
+
+            // Si se llego al destino, corta
+            if (u == dest)
+                break;
+
+            for (Edge* e : u->edges) {
+                Node* v = nullptr;
+
+                if (e->src == u)
+                    v = e->dest;
+                else if (!e->one_way && e->dest == u)
+                    v = e->src;
+                else
+                    continue;
+
+                if (closed.count(v))
+                    continue;
+
+                double new_cost = dist[u] + e->length;
+
+                if (new_cost < dist[v]) {
+                    dist[v] = new_cost;
+                    parent[v] = u;
+
+                    pq.push({v, new_cost, new_cost});
+
+                    // Guardar arista visitada
+                    visited_edges.emplace_back(
+                        u->coord, v->coord,
+                        sf::Color::Blue, 1.0f
+                    );
+
+                    // Renderizado por pasos
+                    if (++render_counter % 40 == 0)
+                        render();
+                }
+            }
+        }
 
         set_final_path(parent);
     }
+
 
     void a_star(Graph &graph) {
         std::unordered_map<Node *, Node *> parent;
@@ -71,9 +139,29 @@ class PathFindingManager {
     //* --- render ---
     // En cada iteración de los algoritmos esta función es llamada para dibujar los cambios en el 'window_manager'
     void render() {
-        sf::sleep(sf::milliseconds(10));
-        // TODO: Add your code here
+        if (!current_graph) return;
+
+        auto& win = window_manager->get_window();
+        window_manager->clear();
+
+        // Dibujar nodos
+        for (const auto& pair : current_graph->nodes) {
+            pair.second->draw(win);
+        }
+
+        // Dibujar aristas visitadas
+        for (const auto& e : visited_edges) {
+            e.draw(win, sf::RenderStates::Default);
+        }
+
+        // Dibujar inicio y destino
+        if (src)  src->draw(win);
+        if (dest) dest->draw(win);
+
+        window_manager->display();
+        sf::sleep(sf::milliseconds(1));
     }
+
 
     //* --- set_final_path ---
     // Esta función se usa para asignarle un valor a 'this->path' al final de la simulación del algoritmo.
@@ -90,11 +178,26 @@ class PathFindingManager {
     //
     // Este path será utilizado para hacer el 'draw()' del 'path' entre 'src' y 'dest'.
     //*
-    void set_final_path(std::unordered_map<Node *, Node *> &parent) {
-        Node* current = dest;
+    void set_final_path(const std::unordered_map<Node*, Node*>& parent) {
+        path.clear();
 
-        // TODO: Add your code here
+        Node* cursor = dest;
+
+        while (cursor) {
+            auto it = parent.find(cursor);
+            if (it == parent.end()) break;
+
+            Node* previous = it->second;
+            if (previous) {
+                path.emplace_back(previous->coord, cursor->coord,
+                                  sf::Color::Green, 3.0f);
+            }
+
+            cursor = previous;
+        }
     }
+
+    Graph* current_graph = nullptr;
 
 public:
     Node *src = nullptr;
@@ -102,12 +205,30 @@ public:
 
     explicit PathFindingManager(WindowManager *window_manager) : window_manager(window_manager) {}
 
-    void exec(Graph &graph, Algorithm algorithm) {
-        if (src == nullptr || dest == nullptr) {
+    void exec(Graph& g, Algorithm a) {
+        if (!src || !dest)
             return;
-        }
 
-        // TODO: Add your code here
+        current_graph = &g;
+        path.clear();
+        visited_edges.clear();
+        render_counter = 0;
+
+        auto begin = chrono::high_resolution_clock::now();
+
+        if (a == Dijkstra)
+            dijkstra(g);
+        else if (a == AStar)
+            a_star(g);
+        else if (a == BestFirstSearch)
+            best_first_search(g);
+
+        auto finish = chrono::high_resolution_clock::now();
+        auto ms = chrono::duration_cast<chrono::milliseconds>(finish - begin);
+
+        cout << "Duracion: " << ms.count() << " ms\n";
+        cout << "Visitados: " << visited_edges.size() << "\n";
+        cout << "Segmentos de camino: " << path.size() << "\n";
     }
 
     void reset() {
