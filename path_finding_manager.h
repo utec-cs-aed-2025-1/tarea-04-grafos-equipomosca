@@ -16,7 +16,8 @@
 enum Algorithm {
     None,
     Dijkstra,
-    AStar
+    AStar,
+    BestFirstSearch,
 };
 
 
@@ -54,6 +55,13 @@ class PathFindingManager {
     }
 
     void a_star(Graph &graph) {
+        std::unordered_map<Node *, Node *> parent;
+        // TODO: Add your code here
+
+        set_final_path(parent);
+    }
+
+    void best_first_search(Graph &graph) {
         std::unordered_map<Node *, Node *> parent;
         // TODO: Add your code here
 
