@@ -56,6 +56,13 @@ class PathFindingManager {
         }
     };
 
+    double heuristica(Node* a, Node* b) const {
+        double dx = a->coord.x - b->coord.x;
+        double dy = a->coord.y - b->coord.y;
+        return sqrt(dx * dx + dy * dy);
+    }
+
+
     void dijkstra(Graph& graph) {
         unordered_map<Node*, double> dist;
         unordered_map<Node*, Node*> parent;
@@ -120,7 +127,6 @@ class PathFindingManager {
 
         set_final_path(parent);
     }
-
 
     void a_star(Graph &graph) {
         std::unordered_map<Node *, Node *> parent;
@@ -214,6 +220,20 @@ public:
         visited_edges.clear();
         render_counter = 0;
 
+        switch (a) {
+            case Dijkstra:
+                cout << "Usando algoritmo: Dijkstra\n";
+                break;
+            case AStar:
+                cout << "Usando algoritmo: A*\n";
+                break;
+            case BestFirstSearch:
+                cout << "Usando algoritmo: Best First Search\n";
+                break;
+            default:
+                cout << "Funciones disponibles: D (Dijkstra), A (A*), B (Best-First), R (Reset), E (Extra), Q (Salir)\n";
+                break;
+        }
         auto begin = chrono::high_resolution_clock::now();
 
         if (a == Dijkstra)
@@ -229,6 +249,7 @@ public:
         cout << "Duracion: " << ms.count() << " ms\n";
         cout << "Visitados: " << visited_edges.size() << "\n";
         cout << "Segmentos de camino: " << path.size() << "\n";
+        cout << "\n";
     }
 
     void reset() {
