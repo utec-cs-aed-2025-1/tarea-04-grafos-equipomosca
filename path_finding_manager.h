@@ -136,8 +136,52 @@ class PathFindingManager {
     }
 
     void best_first_search(Graph &graph) {
-        std::unordered_map<Node *, Node *> parent;
-        // TODO: Add your code here
+        unordered_map<Node *, Node *> parent;
+        unordered_set<Node *> closed;
+
+        priority_queue<Entry> pq;
+        pq.push({src, 0.0, heuristica(src, dest)}); // priority = solo h
+
+        while (!pq.empty()) {
+            auto top = pq.top();
+            pq.pop();
+
+            Node *u = top.node;
+
+            if (closed.count(u))
+                continue;
+            closed.insert(u);
+
+            // Si se llego al destino, corta
+            if (u == dest)
+                break;
+
+            for (Edge *e: u->edges) {
+                Node *v = nullptr;
+
+                if (e->src == u)
+                    v = e->dest;
+                else if (!e->one_way && e->dest == u)
+                    v = e->src;
+                else
+                    continue;
+
+                if (closed.count(v))
+                    continue;
+
+                parent[v] = u;
+
+                pq.push({v, 0.0, heuristica(v, dest)}); // solo heurística
+
+                visited_edges.emplace_back(
+                    u->coord, v->coord,
+                    sf::Color::Blue, 1.0f
+                );
+
+                if (++render_counter % 40 == 0)
+                    render();
+            }
+        }
 
         set_final_path(parent);
     }
