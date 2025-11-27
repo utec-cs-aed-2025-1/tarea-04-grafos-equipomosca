@@ -129,8 +129,69 @@ class PathFindingManager {
     }
 
     void a_star(Graph &graph) {
-        std::unordered_map<Node *, Node *> parent;
-        // TODO: Add your code here
+        unordered_map<Node *, double> g;
+        unordered_map<Node *, Node *> parent;
+        unordered_set<Node *> closed;
+
+        // Inicializamos g
+        for (auto &p: graph.nodes)
+            g[p.second] = numeric_limits<double>::infinity();
+        g[src] = 0.0;
+
+        // Heuristica
+        priority_queue<Entry> pq;
+        pq.push({src, 0.0, heuristica(src, dest)});
+
+        while (!pq.empty()) {
+            Entry top = pq.top();
+            pq.pop();
+
+            Node *u = top.node;
+
+            if (closed.count(u))
+                continue;
+            closed.insert(u);
+
+            // Si se llego al destino, corta
+            if (u == dest)
+                break;
+
+            // Exploraramos vecinos
+            for (Edge *e: u->edges) {
+                Node *v = nullptr;
+
+                if (e->src == u)
+                    v = e->dest;
+                else if (!e->one_way && e->dest == u)
+                    v = e->src;
+                else
+                    continue;
+
+                if (closed.count(v))
+                    continue;
+
+                double tentative_g = g[u] + e->length;
+
+                if (tentative_g < g[v]) {
+                    g[v] = tentative_g;
+                    parent[v] = u;
+
+                    double f = tentative_g + heuristica(v, dest);
+
+                    pq.push({v, tentative_g, f});
+
+                    // Guardar arista visitada
+                    visited_edges.emplace_back(
+                        u->coord, v->coord,
+                        sf::Color::Magenta, 1.0f
+                    );
+
+                    // Renderizado por pasos
+                    if (++render_counter % 40 == 0)
+                        render();
+                }
+            }
+        }
 
         set_final_path(parent);
     }
